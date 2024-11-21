@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Produtos com Alerta</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f4f8;
+        }
+
+        h1 {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 2em;
+            color: #00796b;
+        }
+
+        .form-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 10px;
+            padding: 15px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        .form-container input,
+        .form-container select,
+        .form-container button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .form-container button {
+            background-color: #00796b;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .form-container button:hover {
+            background-color: #00574b;
+        }
+
+        .btn-add-module {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #0288d1;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-add-module:hover {
+            background-color: #01579b;
+        }
+
+        .search-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .search-container input {
+            padding: 10px;
+            width: 300px;
+            border-radius: 5px;
+            border: 1px solid #cccccc;
+            font-size: 1em;
+        }
+
+        .shelf-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .module {
+            width: 280px;
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .module:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .module h3 {
+            font-size: 1.2em;
+            text-align: center;
+            color: #00796b;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .module h3 input {
+            font-size: 1em;
+            text-align: center;
+            border: none;
+            background: transparent;
+            color: #00796b;
+            outline: none;
+        }
+
+        .alert-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 25px;
+            height: 25px;
+            background-color: red;
+            border-radius: 50%;
+            color: white;
+            font-size: 0.8em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            visibility: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .product {
+            background: #e0f7fa;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+            border: 1px solid #00796b;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .countdown {
+            font-size: 0.85em;
+            color: #00796b;
+            font-weight: bold;
+        }
+
+        .countdown.alert {
+            color: red;
+            font-weight: bold;
+        }
+
+        .btn-delete {
+            color: red;
+            cursor: pointer;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
+        .btn-delete-module {
+            position: absolute;
+            top: 10px;
+            left: 10px; /* Mudar para 'left' para posicionar à esquerda */
+            background-color: transparent;
+            color: red;
+            font-size: 1.5em;
+            border: none;
+            cursor: pointer;
+        }
+
+
+    </style>
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+</head>
+<body>
+    <h1>Gestão de Produtos com Alerta</h1>
+
+    <!-- Barra de pesquisa -->
+    <div class="search-container">
+        <input type="text" id="moduleSearch" placeholder="Pesquisar por Seção/Modulo (Ex: Seção 1)" oninput="searchModule()">
+    </div>
+
+    <!-- Formulário para cadastrar produtos -->
+    <div class="form-container">
+        <input type="text" id="productName" placeholder="Nome do Produto" required>
+        <input type="number" id="quantity" placeholder="Quantidade" min="1" required>
+        <input type="date" id="expiryDate" required>
+        <select id="moduleSelect"></select>
+        <button id="addProduct">Adicionar Produto</button>
+    </div>
+
+    <!-- Botão para adicionar novos módulos -->
+    <button class="btn-add-module" id="addModule">Adicionar Novo Módulo</button>
+
+    <!-- Prateleiras (módulos dinâmicos) -->
+    <div class="shelf-container" id="shelfContainer"></div>
+
+    <script>
+        const productNameInput = document.getElementById('productName');
+        const quantityInput = document.getElementById('quantity');
+        const expiryDateInput = document.getElementById('expiryDate');
+        const moduleSelect = document.getElementById('moduleSelect');
+        const addProductButton = document.getElementById('addProduct');
+        const addModuleButton = document.getElementById('addModule');
+        const shelfContainer = document.getElementById('shelfContainer');
+        const moduleSearchInput = document.getElementById('moduleSearch');
+
+        let moduleCount = 0;
+        const modules = [];
+
+        // Função para salvar os dados no LocalStorage
+        function saveData() {
+            const savedModules = modules.map(module => ({
+                id: module.id,
+                name: module.name,
+                products: Array.from(module.element.querySelectorAll('.product')).map(product => ({
+                    name: product.querySelector('span').textContent.split(' - ')[0],
+                    quantity: product.querySelector('span').textContent.split(' - ')[1].split(' und')[0],
+                    expiryDate: product.querySelector('.countdown').dataset.expiryDate, // Salva a data de validade como string
+                })),
+            }));
+            localStorage.setItem('modules', JSON.stringify(savedModules));
+        }
+
+        // Função para carregar os dados do LocalStorage
+        function loadData() {
+            const savedModules = JSON.parse(localStorage.getItem('modules'));
+            if (savedModules) {
+                savedModules.forEach(savedModule => {
+                    addModule(savedModule.name, savedModule.id);
+                    savedModule.products.forEach(product => {
+                        addProductToModule(savedModule.id, product.name, product.quantity, product.expiryDate);
+                    });
+                });
+            }
+        }
+
+        function addModule(name = `Seção ${moduleCount + 1}`, moduleId = `module${moduleCount + 1}`) {
+            moduleCount++;
+            const moduleElement = document.createElement('div');
+            moduleElement.classList.add('module');
+            moduleElement.id = moduleId;
+
+            const alertIndicator = document.createElement('div');
+            alertIndicator.classList.add('alert-indicator');
+            alertIndicator.textContent = '0';
+            moduleElement.appendChild(alertIndicator);
+
+            const moduleHeader = document.createElement('h3');
+            const inputName = document.createElement('input');
+            inputName.type = 'text';
+            inputName.value = name;
+            inputName.onchange = function() {
+                module.name = inputName.value;
+                saveData(); // Salva após alterar o nome do módulo
+            };
+            moduleHeader.appendChild(inputName);
+            moduleElement.appendChild(moduleHeader);
+
+            const productList = document.createElement('div');
+            productList.classList.add('product-list');
+            moduleElement.appendChild(productList);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.classList.add('btn-delete-module');
+            deleteButton.innerHTML = '&times;';
+            deleteButton.onclick = function() {
+                deleteModule(moduleId);
+            };
+            moduleElement.appendChild(deleteButton);
+
+            // Gerar QR Code para o módulo
+            const qrCodeContainer = document.createElement('div');
+            qrCodeContainer.classList.add('qr-code');
+            new QRCode(qrCodeContainer, {
+                text: window.location.href.split("#")[0] + "#" + moduleId, // O link com o ID do módulo
+                width: 50,
+                height: 50,
+            });
+            moduleElement.appendChild(qrCodeContainer);
+
+            shelfContainer.appendChild(moduleElement);
+
+            const moduleOption = document.createElement('option');
+            moduleOption.value = moduleId;
+            moduleOption.textContent = name; // Aqui está o nome correto do módulo
+            moduleSelect.appendChild(moduleOption);
+
+            modules.push({ id: moduleId, name: name, element: moduleElement });
+
+            saveData(); // Salva os dados no LocalStorage após adicionar um módulo
+        }
+
+        function deleteModule(moduleId) {
+            const moduleElement = document.getElementById(moduleId);
+            moduleElement.remove();
+            const moduleOption = document.querySelector(`option[value="${moduleId}"]`);
+            moduleOption.remove();
+            const index = modules.findIndex(module => module.id === moduleId);
+            if (index > -1) modules.splice(index, 1);
+
+            saveData(); // Salva os dados no LocalStorage após deletar um módulo
+        }
+
+        function updateModuleAlert(moduleId) {
+            const moduleElement = document.getElementById(moduleId);
+            const alertIndicator = moduleElement.querySelector('.alert-indicator');
+            const productList = moduleElement.querySelectorAll('.product');
+
+            let alertCount = 0;
+            productList.forEach(product => {
+                const countdownText = product.querySelector('.countdown').textContent;
+                if (countdownText !== "Expirado") {
+                    const [days] = countdownText.split('d');
+                    if (parseInt(days) < 10) {
+                        alertCount++;
+                    }
+                }
+            });
+
+            alertIndicator.style.visibility = alertCount > 0 ? 'visible' : 'hidden';
+            alertIndicator.textContent = alertCount;
+        }
+
+        function updateCountdown(countdownElement, expiryDate, moduleId) {
+            const interval = setInterval(() => {
+                const now = new Date();
+                const expiry = new Date(expiryDate);
+                const difference = expiry - now;
+
+                if (difference <= 0) {
+                    countdownElement.textContent = "Expirado";
+                    countdownElement.classList.remove('alert');
+                    clearInterval(interval);
+                } else {
+                    const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+                    countdownElement.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+
+                    // Verificar se está a 10 dias ou menos do vencimento
+                    if (days <= 10) {
+                        countdownElement.classList.add('alert'); // Adiciona a classe para alertar
+                    } else {
+                        countdownElement.classList.remove('alert'); // Remove a classe de alerta
+                    }
+                }
+
+                // Atualizar alerta do módulo
+                updateModuleAlert(moduleId);
+            }, 1000);
+        }
+
+
+        function addProduct() {
+            const productName = productNameInput.value;
+            const quantity = quantityInput.value;
+            const expiryDate = expiryDateInput.value;
+            const selectedModule = moduleSelect.value;
+
+            if (!productName || !quantity || !expiryDate || !selectedModule) {
+                alert('Por favor, preencha todos os campos!');
+                return;
+            }
+
+            addProductToModule(selectedModule, productName, quantity, expiryDate);
+            productNameInput.value = '';
+            quantityInput.value = '';
+            expiryDateInput.value = '';
+        }
+
+        function addProductToModule(moduleId, productName, quantity, expiryDate) {
+            const moduleElement = document.getElementById(moduleId);
+            const productElement = document.createElement('div');
+            productElement.classList.add('product');
+
+            productElement.innerHTML = `
+                <span>${productName} - ${quantity} und</span>
+                <div class="countdown" data-expiry-date="${expiryDate}"></div>
+                <span class="delete-product" onclick="deleteProduct(this)">Excluir</span>
+            `;
+
+            const countdownElement = productElement.querySelector('.countdown');
+            updateCountdown(countdownElement, expiryDate, moduleId);
+
+            const productList = moduleElement.querySelector('.product-list');
+            productList.appendChild(productElement);
+
+            saveData(); // Salva os dados no LocalStorage após adicionar um produto
+        }
+
+        function deleteProduct(deleteButton) {
+            const productElement = deleteButton.closest('.product');
+            const moduleId = productElement.closest('.module').id;
+            productElement.remove();
+            saveData(); // Salva os dados no LocalStorage após excluir um produto
+        }
+
+        function searchModule() {
+            const query = moduleSearchInput.value.trim();
+            if (!query) return;
+
+            const modulesToDisplay = modules.filter(module =>
+                module.name.includes(query) || module.id.includes(query) // Verifica se o nome ou ID do módulo contém a pesquisa
+            );
+
+            shelfContainer.innerHTML = ''; // Limpa a exibição
+            modulesToDisplay.forEach(module => {
+                shelfContainer.appendChild(module.element);
+            });
+        }
+
+        window.onload = loadData;
+
+        addModuleButton.addEventListener('click', () => addModule());
+        addProductButton.addEventListener('click', addProduct);
+    </script>
+</body>
+</html>
